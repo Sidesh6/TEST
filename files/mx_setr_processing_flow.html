@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: transparent; font-size: 12px; color: #1e293b; }
+.page { padding: 16px; max-width: 1100px; }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; }
+.tab { padding: 5px 13px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1.5px solid transparent; transition: all .15s; }
+.tab.active { background: #1e40af; color: #fff; }
+.tab:not(.active) { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── Message structure ── */
+.msg-wrap { display: flex; gap: 12px; flex-wrap: wrap; }
+.layer-box { border-radius: 8px; overflow: hidden; flex: 1; min-width: 200px; }
+.layer-head { padding: 6px 10px; font-size: 10px; font-weight: 700; color: #fff; }
+.layer-body { padding: 8px 10px; font-size: 9.5px; font-family: 'Courier New', monospace; line-height: 1.7; }
+.tag  { color: #1e40af; font-weight: 600; }
+.val  { color: #166534; }
+.cmt  { color: #94a3b8; font-style: italic; }
+.hi   { background: #fef9c3; border-radius: 3px; padding: 0 2px; }
+
+/* ── Flow ── */
+.flow { display: flex; flex-direction: column; gap: 0; }
+.step { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 2px; }
+.step-num { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; flex-shrink: 0; margin-top: 2px; }
+.step-body { flex: 1; border-radius: 8px; padding: 8px 11px; }
+.step-title { font-size: 11px; font-weight: 700; margin-bottom: 3px; }
+.step-detail { font-size: 10px; opacity: .85; line-height: 1.5; }
+.step-field { font-family: 'Courier New', monospace; font-size: 9.5px; background: rgba(255,255,255,.5); padding: 1px 5px; border-radius: 4px; display: inline-block; margin-top: 2px; }
+.step-arrow { text-align: center; color: #94a3b8; font-size: 13px; margin: 1px 0 1px 34px; }
+
+/* Step colors */
+.s-blue  { background: #dbeafe; }  .n-blue  { background: #1e40af; color: #fff; }
+.s-green { background: #dcfce7; }  .n-green { background: #166534; color: #fff; }
+.s-purple{ background: #f3e8ff; }  .n-purple{ background: #7e22ce; color: #fff; }
+.s-amber { background: #fef9c3; }  .n-amber { background: #92400e; color: #fff; }
+.s-orange{ background: #ffedd5; }  .n-orange{ background: #c2410c; color: #fff; }
+.s-red   { background: #fee2e2; }  .n-red   { background: #991b1b; color: #fff; }
+.s-teal  { background: #ccfbf1; }  .n-teal  { background: #0f766e; color: #fff; }
+.s-slate { background: #f1f5f9; }  .n-slate { background: #334155; color: #fff; }
+
+/* Decision diamond */
+.decision { border: 2px solid #fbbf24; border-radius: 8px; background: #fefce8; padding: 7px 10px; margin: 4px 0 4px 34px; font-size: 10px; }
+.decision .q { font-weight: 700; color: #92400e; margin-bottom: 4px; }
+.dec-row { display: flex; gap: 8px; margin-top: 4px; }
+.dec-yes { background: #dcfce7; border: 1px solid #86efac; border-radius: 5px; padding: 3px 8px; font-size: 9.5px; font-weight: 600; color: #166534; }
+.dec-no  { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 5px; padding: 3px 8px; font-size: 9.5px; font-weight: 600; color: #991b1b; }
+
+/* DB lookup boxes */
+.db-box { display: flex; gap: 8px; margin: 4px 0 4px 34px; flex-wrap: wrap; }
+.db { border-radius: 6px; padding: 5px 9px; font-size: 10px; border: 1.5px dashed #94a3b8; }
+.db .t { font-weight: 700; font-size: 9.5px; }
+.db .f { font-family: 'Courier New', monospace; font-size: 9px; color: #6366f1; }
+
+/* SO cascade */
+.cascade { margin: 4px 0 4px 34px; border: 1.5px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+.cascade-head { background: #1e40af; color: #fff; padding: 5px 10px; font-size: 10px; font-weight: 700; }
+.cascade-step { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid #f1f5f9; font-size: 10px; }
+.cascade-step:last-child { border-bottom: none; }
+.c-num { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex-shrink: 0; }
+.c-key { font-family: 'Courier New', monospace; font-size: 9.5px; font-weight: 600; background: #eff6ff; padding: 1px 5px; border-radius: 3px; color: #1e40af; }
+.c-tbl { font-size: 9px; color: #6366f1; font-family: 'Courier New', monospace; }
+.c-result { margin-left: auto; font-size: 9px; }
+.found  { color: #166534; font-weight: 700; }
+.notfnd { color: #991b1b; }
+
+/* Error path */
+.err-path { margin: 8px 0 0 34px; border-radius: 7px; padding: 7px 10px; background: #fef2f2; border: 1.5px solid #fca5a5; font-size: 10px; }
+.err-path .t { font-weight: 700; color: #991b1b; margin-bottom: 3px; }
+
+/* Final dispatch */
+.dispatch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 0 34px; }
+.dispatch-box { border-radius: 7px; padding: 7px 10px; font-size: 10px; font-weight: 600; text-align: center; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="tabs">
+  <div class="tab active" onclick="show('flow')">Processing Flow</div>
+  <div class="tab" onclick="show('msg')">SAA Message Structure</div>
+  <div class="tab" onclick="show('parser')">SAA Parser Design</div>
+  <div class="tab" onclick="show('db')">DB Tables Required</div>
+</div>
+
+<!-- ══════════ TAB 1: FLOW ══════════ -->
+<div id="flow" class="view active">
+  <div style="font-size:13px;font-weight:700;margin-bottom:4px">MX Message Processing Flow — setr (REDM / SUBS / SWITCH)</div>
+  <div style="font-size:10.5px;color:#475569;margin-bottom:12px">Based on your actual message: <code>setr.004.001.04</code> wrapped in SAA DataPDU with SIBESHeader</div>
+
+  <div class="flow">
+
+    <!-- Step 1 -->
+    <div class="step">
+      <div class="step-num n-blue">1</div>
+      <div class="step-body s-blue">
+        <div class="step-title">Receive SAA-wrapped MX Message</div>
+        <div class="step-detail">
+          Ingest via MQ (parbdeff_fdimsg04 queue) or SFTP.<br>
+          Detect compound structure: <span class="step-field">&lt;SIBESHeader&gt;</span> + <span class="step-field">&lt;Saa:DataPDU&gt;</span>
+        </div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+
+    <!-- Step 2 -->
+    <div class="step">
+      <div class="step-num n-blue">2</div>
+      <div class="step-body s-blue">
+        <div class="step-title">SAA Envelope Parser — Strip & Extract</div>
+        <div class="step-detail">
+          Layer 1 — <strong>SIBESHeader</strong>: extract <span class="step-field">InputMessageReference = FDI0632200752000</span><br>
+          Layer 2 — <strong>Saa:Header</strong>: extract routing, sender DN, receiver DN, session/seq, SnFQueueName<br>
+          Layer 3 — <strong>Saa:Body</strong>: extract AppHdr + ISO 20022 Document<br>
+          Output: <span class="step-field">SaaEnvelope + AppHdr + RawDocument</span>
+        </div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+
+    <!-- Step 3 -->
+    <div class="step">
+      <div class="step-num n-purple">3</div>
+      <div class="step-body s-purple">
+        <div class="step-title">Structural Validation (XSD)</div>
+        <div class="step-detail">
+          Detect message type from <span class="step-field">Saa:MessageIdentifier = setr.004.001.04</span><br>
+          Validate Document against <strong>setr.004.001.04 XSD</strong> from Schema Registry (non-fail-fast — collect all errors)<br>
+          Check AppHdr namespace: <span class="step-field">urn:swift:xsd:$ahV10</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Validation decision -->
+    <div class="decision">
+      <div class="q">Structural validation passed?</div>
+      <div class="dec-row">
+        <span class="dec-yes">YES → continue to Step 4</span>
+        <span class="dec-no">NO → DLQ + ErrorEnvelope + NAK with full error list</span>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+
+    <!-- Step 4 -->
+    <div class="step">
+      <div class="step-num n-green">4</div>
+      <div class="step-body s-green">
+        <div class="step-title">Branch Resolution — via Receiver DN</div>
+        <div class="step-detail">
+          Extract from SAA Header: <span class="step-field">Saa:Receiver / Saa:DN = ou=funds,ou=live,o=parbdeff,o=swift</span><br>
+          also: <span class="step-field">Saa:Receiver / Saa:X1 = PARBITMOXXX</span><br>
+          Lookup DB: <strong>FDI_BRANCH</strong> table by DN or BIC value → resolve <strong>branchId</strong>
+        </div>
+      </div>
+    </div>
+    <div class="db-box">
+      <div class="db"><div class="t">FDI_BRANCH</div><div class="f">WHERE receiver_dn = '{DN}' OR receiver_bic = 'PARBITMOXXX'</div></div>
+    </div>
+
+    <!-- Branch decision -->
+    <div class="decision">
+      <div class="q">Branch found?</div>
+      <div class="dec-row">
+        <span class="dec-yes">YES → set branchId in MessageContext</span>
+        <span class="dec-no">NO → DLQ + BRANCH_NOT_FOUND error</span>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+
+    <!-- Step 5 -->
+    <div class="step">
+      <div class="step-num n-green">5</div>
+      <div class="step-body s-green">
+        <div class="step-title">Client Resolution — via Sender DN</div>
+        <div class="step-detail">
+          Extract: <span class="step-field">Saa:Sender / Saa:DN = ou=funds,ou=tandt,o=testdeu1399,o=swift</span><br>
+          also: <span class="step-field">Saa:Sender / Saa:X1 = CSAMCHZHXXX</span><br>
+          Lookup DB: <strong>FDI_CLIENT</strong> table by sender DN or BIC → resolve <strong>clientId</strong>
+        </div>
+      </div>
+    </div>
+    <div class="db-box">
+      <div class="db"><div class="t">FDI_CLIENT</div><div class="f">WHERE sender_dn = '{DN}' OR sender_bic = 'CSAMCHZHXXX'</div></div>
+    </div>
+
+    <!-- Client decision -->
+    <div class="decision">
+      <div class="q">Client found?</div>
+      <div class="dec-row">
+        <span class="dec-yes">YES → set clientId in MessageContext</span>
+        <span class="dec-no">NO → DLQ + CLIENT_NOT_FOUND error</span>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+
+    <!-- Step 6 — SO cascade -->
+    <div class="step">
+      <div class="step-num n-amber">6</div>
+      <div class="step-body s-amber">
+        <div class="step-title">Sub-Order (SO) / Destination Resolution — Cascading Lookup</div>
+        <div class="step-detail">Resolve the target Sub-Order using a 3-level fallback chain:</div>
+      </div>
+    </div>
+    <div class="cascade">
+      <div class="cascade-head">SO Cascading Lookup — stops at first match</div>
+      <div class="cascade-step">
+        <div class="c-num" style="background:#1e40af;color:#fff">1</div>
+        <div style="flex:1">
+          <div>Try <span class="c-key">&lt;AcctId&gt;</span> = <code>1150049111J</code></div>
+          <div class="c-tbl">FDI_SO_CONFIG WHERE acct_id = '1150049111J' AND client_id = '{clientId}' AND branch_id = '{branchId}'</div>
+        </div>
+        <div class="c-result"><span class="found">FOUND → use SO</span> | <span class="notfnd">NOT FOUND → try level 2</span></div>
+      </div>
+      <div class="cascade-step">
+        <div class="c-num" style="background:#7e22ce;color:#fff">2</div>
+        <div style="flex:1">
+          <div>Try <span class="c-key">&lt;ISIN&gt;</span> = <code>DE000A0MS726</code></div>
+          <div class="c-tbl">FDI_SO_CONFIG WHERE isin = 'DE000A0MS726' AND client_id = '{clientId}' AND branch_id = '{branchId}'</div>
+        </div>
+        <div class="c-result"><span class="found">FOUND → use SO</span> | <span class="notfnd">NOT FOUND → try level 3</span></div>
+      </div>
+      <div class="cascade-step">
+        <div class="c-num" style="background:#0f766e;color:#fff">3</div>
+        <div style="flex:1">
+          <div>Use <span class="c-key">Default SO</span> from FDI_BRANCH table</div>
+          <div class="c-tbl">FDI_BRANCH WHERE branch_id = '{branchId}' → default_so_id</div>
+        </div>
+        <div class="c-result"><span class="found">ALWAYS FOUND (fallback)</span></div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+
+    <!-- Step 7 -->
+    <div class="step">
+      <div class="step-num n-amber">7</div>
+      <div class="step-body s-amber">
+        <div class="step-title">Business Rule Validation — Scoped to (clientId, branchId, SO, msgType)</div>
+        <div class="step-detail">
+          Now that client + branch + SO are resolved, load and execute scoped Drools rule set:<br>
+          • Amount/units limits: <span class="step-field">GrssAmt EUR 2200</span> | <span class="step-field">UnitsNb 120</span> within client limits?<br>
+          • CxlRght.Cd = VALI — cancellation right validation<br>
+          • ISIN allowed for this client/SO?<br>
+          • ReqdSttlmCcy / ReqdNAVCcy = EUR allowed for this client?<br>
+          • Sub-order type (REDM/SUBS/SWITCH) allowed per SO config?
+        </div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+
+    <!-- Step 8 -->
+    <div class="step">
+      <div class="step-num n-teal">8</div>
+      <div class="step-body s-teal">
+        <div class="step-title">Template / Transformation Mapping Lookup</div>
+        <div class="step-detail">
+          Lookup: <span class="step-field">FDI_TEMPLATE</span> WHERE (clientId, branchId, SO, msgType = setr.004, targetFormat = ?)<br>
+          Determine <strong>destination type</strong>: MX→MX (setr.004 passthrough) OR MX→MT OR MX→Flat<br>
+          Load YAML/XSLT mapping for the resolved template
+        </div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+
+    <!-- Step 9 -->
+    <div class="step">
+      <div class="step-num n-teal">9</div>
+      <div class="step-body s-teal">
+        <div class="step-title">Enrichment</div>
+        <div class="step-detail">
+          • BIC validation: CSAMCHZHXXX sender, PARBITMOXXX receiver<br>
+          • ISIN enrichment: <span class="step-field">DE000A0MS726</span> → fund name, currency, market<br>
+          • Duplicate check: key = clientId + MstrRef <span class="step-field">1001090205845</span> + OrdrRef <span class="step-field">USC30REDM01</span>
+        </div>
+      </div>
+    </div>
+    <div class="step-arrow">↓</div>
+
+    <!-- Step 10 -->
+    <div class="step">
+      <div class="step-num n-orange">10</div>
+      <div class="step-body s-orange">
+        <div class="step-title">Transformation — Apply Template</div>
+        <div class="step-detail">Apply resolved YAML/XSLT mapping. Target format options:</div>
+      </div>
+    </div>
+    <div class="dispatch-grid">
+      <div class="dispatch-box" style="background:#dcfce7;border:1.5px solid #86efac;color:#166534">MX → MX<br><span style="font-size:9px;font-weight:400">setr.004 passthrough<br>or reformatted</span></div>
+      <div class="dispatch-box" style="background:#dbeafe;border:1.5px solid #93c5fd;color:#1e40af">MX → MT<br><span style="font-size:9px;font-weight:400">setr.004 → MT502<br>(Fund Order)</span></div>
+      <div class="dispatch-box" style="background:#fef9c3;border:1.5px solid #fde047;color:#713f12">MX → Flat<br><span style="font-size:9px;font-weight:400">CSV / fixed-width<br>for legacy systems</span></div>
+    </div>
+    <div class="step-arrow">↓</div>
+
+    <!-- Step 11 -->
+    <div class="step">
+      <div class="step-num n-slate">11</div>
+      <div class="step-body s-slate" style="color:#fff">
+        <div class="step-title" style="color:#fff">Route & Deliver</div>
+        <div class="step-detail" style="color:#e2e8f0">
+          Routing rule resolves SO → target MQ queue / SFTP path / REST endpoint<br>
+          Outbox-pattern delivery: write to MSG_OUTBOX → dispatch → confirm → audit journal
+        </div>
+      </div>
+    </div>
+
+    <!-- Error path summary -->
+    <div class="err-path" style="margin-top:12px">
+      <div class="t">Error Handling at any step</div>
+      Wrap in <code>ErrorEnvelope{errorCode, stage, fieldXPath, originalPayload, correlationId}</code><br>
+      Route to DLQ → audit journal → alert → AI triage (optional). Replay via /api/v1/replay/{correlationId}
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TAB 2: MESSAGE STRUCTURE ══════════ -->
+<div id="msg" class="view">
+  <div style="font-size:13px;font-weight:700;margin-bottom:4px">SAA-wrapped MX Message Structure Analysis</div>
+  <div style="font-size:10.5px;color:#475569;margin-bottom:12px">3-layer compound message. The parser must strip each layer and hand off cleanly to the next.</div>
+
+  <div class="msg-wrap">
+
+    <div class="layer-box" style="border:1.5px solid #fca5a5">
+      <div class="layer-head" style="background:#991b1b">Layer 1 — SIBESHeader (Custom proprietary)</div>
+      <div class="layer-body" style="background:#fff1f2">
+        <span class="tag">&lt;SIBESHeader&gt;</span><br>
+        &nbsp;<span class="tag">&lt;InputMessageReference&gt;</span><br>
+        &nbsp;&nbsp;<span class="val">FDI0632200752000</span> <span class="hi">← FDA internal ref</span><br>
+        &nbsp;<span class="tag">&lt;/InputMessageReference&gt;</span><br>
+        <span class="tag">&lt;/SIBESHeader&gt;</span><br>
+        <br>
+        <span class="cmt">// Custom header — strip before XML parse</span><br>
+        <span class="cmt">// Not valid XML part of the SAA PDU</span>
+      </div>
+    </div>
+
+    <div class="layer-box" style="border:1.5px solid #93c5fd">
+      <div class="layer-head" style="background:#1e40af">Layer 2 — Saa:DataPDU / Saa:Header (SAA Envelope)</div>
+      <div class="layer-body" style="background:#eff6ff">
+        <span class="tag">&lt;Saa:DataPDU</span> xmlns:Saa="urn:swift:xsd:saa.2.0"...<span class="tag">&gt;</span><br>
+        &nbsp;<span class="tag">&lt;Saa:Header&gt;</span><br>
+        &nbsp;&nbsp;<span class="tag">&lt;Saa:Message&gt;</span><br>
+        &nbsp;&nbsp;&nbsp;<span class="hi">MessageIdentifier: setr.004.001.04</span><br>
+        &nbsp;&nbsp;&nbsp;<span class="hi">Format: MX</span><br>
+        &nbsp;&nbsp;&nbsp;<span class="hi">Sender DN: ou=funds,ou=tandt,o=testdeu1399,o=swift</span><br>
+        &nbsp;&nbsp;&nbsp;<span class="hi">Sender X1 (BIC): CSAMCHZHXXX</span><br>
+        &nbsp;&nbsp;&nbsp;<span class="hi">Receiver DN: ou=funds,ou=live,o=parbdeff,o=swift</span><br>
+        &nbsp;&nbsp;&nbsp;<span class="hi">Receiver X1: PARBITMOXXX, X2: live</span><br>
+        &nbsp;&nbsp;&nbsp;RoutingCode: <span class="val">FDI06</span><br>
+        &nbsp;&nbsp;&nbsp;MessageContext: <span class="val">Original</span><br>
+        &nbsp;&nbsp;&nbsp;MessageNature: <span class="val">Financial</span><br>
+        &nbsp;&nbsp;&nbsp;Priority: <span class="val">Normal</span><br>
+        &nbsp;&nbsp;&nbsp;IsPossibleDuplicate: <span class="val">false</span><br>
+        &nbsp;&nbsp;&nbsp;SWIFTRef: <span class="val">swi00002-2022-07-29...</span><br>
+        &nbsp;&nbsp;&nbsp;SnFQueueName: <span class="val">parbdeff_fdimsg04</span><br>
+        &nbsp;&nbsp;&nbsp;SessionNr: <span class="val">1973</span> / SeqNr: <span class="val">4557</span><br>
+      </div>
+    </div>
+
+    <div class="layer-box" style="border:1.5px solid #86efac">
+      <div class="layer-head" style="background:#166534">Layer 3 — Saa:Body: AppHdr + Document (ISO 20022)</div>
+      <div class="layer-body" style="background:#f0fdf4">
+        <span class="tag">&lt;AppHdr</span> xmlns="urn:swift:xsd:$ahV10"<span class="tag">&gt;</span><br>
+        &nbsp;<span class="hi">MsgRef: USC30REDM01MR</span><br>
+        &nbsp;CrDate: <span class="val">2022-07-29T17:22:58Z</span><br>
+        <span class="tag">&lt;/AppHdr&gt;</span><br>
+        <br>
+        <span class="tag">&lt;Document</span> xmlns="urn:iso:std:iso:20022:tech:xsd:<span class="val">setr.004.001.04</span>"<span class="tag">&gt;</span><br>
+        &nbsp;<span class="tag">&lt;RedOrdr&gt;</span> <span class="cmt">// Redemption Order</span><br>
+        &nbsp;&nbsp;<span class="hi">MsgId.Id: USC30REDM01MD</span><br>
+        &nbsp;&nbsp;MsgId.CreDtTm: <span class="val">2025-10-01T09:02:05</span><br>
+        &nbsp;&nbsp;<span class="tag">&lt;MltplOrdrDtls&gt;</span><br>
+        &nbsp;&nbsp;&nbsp;<span class="hi">MstrRef: 1001090205845</span><br>
+        &nbsp;&nbsp;&nbsp;CxlRght.Cd: <span class="val">VALI</span><br>
+        &nbsp;&nbsp;&nbsp;<span class="hi">InvstmtAcctDtls.AcctId: 1150049111J</span> ← SO lookup key 1<br>
+        &nbsp;&nbsp;&nbsp;<span class="tag">&lt;IndvOrdrDtls&gt;</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="hi">OrdrRef: USC30REDM01</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;FinInstrmDtls:<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="hi">ISIN: DE000A0MS726</span> ← SO lookup key 2<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nm: Lupus alpha Return Inhaber-Anteile<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;AmtOrUnitsOrPctg:<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;GrssAmt Ccy=<span class="val">EUR</span>: <span class="val">2200</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NetAmt Ccy=<span class="val">EUR</span>: <span class="val">2200</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UnitsNb: <span class="val">120</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;PhysDlvryInd: <span class="val">false</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;ReqdSttlmCcy: <span class="val">EUR</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;ReqdNAVCcy: <span class="val">EUR</span><br>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:12px;padding:10px;background:#fefce8;border:1.5px solid #fde047;border-radius:8px;font-size:10.5px">
+    <strong>Key insight:</strong> This is a <strong>Securities Fund Order (setr)</strong> message — NOT a payment (pacs/camt). The Sub-Order (SO) resolution is securities-domain specific: AcctId = investment account, ISIN = the fund/security identifier. The parser must understand both the SAA envelope and the setr message family.
+  </div>
+</div>
+
+<!-- ══════════ TAB 3: SAA PARSER DESIGN ══════════ -->
+<div id="parser" class="view">
+  <div style="font-size:13px;font-weight:700;margin-bottom:4px">SAA Envelope Parser — Built In-House</div>
+  <div style="font-size:10.5px;color:#475569;margin-bottom:12px">A pre-parser that strips the compound wrapper and routes to the correct MX parser. Must run before any MX parsing.</div>
+
+  <div style="display:flex;flex-direction:column;gap:6px">
+
+    <div class="step"><div class="step-num n-red">1</div>
+      <div class="step-body s-red">
+        <div class="step-title">SIBESHeader Stripper</div>
+        <div class="step-detail">Detect <code>&lt;SIBESHeader&gt;</code> prefix (not valid XML root). Extract InputMessageReference as internalRef. Strip the element — remaining bytes must be valid XML starting at <code>&lt;Saa:DataPDU&gt;</code>. Store internalRef in MessageContext.</div>
+      </div>
+    </div>
+
+    <div class="step"><div class="step-num n-blue">2</div>
+      <div class="step-body s-blue">
+        <div class="step-title">SAA DataPDU Namespace Registration</div>
+        <div class="step-detail">Register all namespaces from root element: <code>xmlns:Saa</code>, <code>xmlns:Sw</code>, <code>xmlns:SwGbl</code>, <code>xmlns:SwInt</code>, <code>xmlns:SwSec</code>. Use StAX namespace-aware reader. Extract Saa:Revision (2.0.2) for version gating.</div>
+      </div>
+    </div>
+
+    <div class="step"><div class="step-num n-blue">3</div>
+      <div class="step-body s-blue">
+        <div class="step-title">Saa:Header Extraction → SaaHeaderContext</div>
+        <div class="step-detail">
+          Extract into <code>SaaHeaderContext</code> POJO:<br>
+          • senderDN, senderBIC (X1), senderLogicalTerminal (X2)<br>
+          • receiverDN, receiverBIC (X1), receiverEnvironment (X2: live/test)<br>
+          • messageIdentifier (setr.004.001.04), format (MX), subFormat<br>
+          • routingCode (FDI06), userReference, messageContext, messageNature<br>
+          • priority, isPossibleDuplicate, service, network, sessionNr, seqNr<br>
+          • swiftRef, snfQueueName, snfInputTime, snfDeliveryTime
+        </div>
+      </div>
+    </div>
+
+    <div class="step"><div class="step-num n-purple">4</div>
+      <div class="step-body s-purple">
+        <div class="step-title">Saa:Body Extraction</div>
+        <div class="step-detail">Navigate to <code>&lt;Saa:Body&gt;</code>. Extract child elements as separate DOM fragments: (1) AppHdr element, (2) Document element. Pass Document namespace URI to MX Parser for message type detection.</div>
+      </div>
+    </div>
+
+    <div class="step"><div class="step-num n-green">5</div>
+      <div class="step-body s-green">
+        <div class="step-title">Route to MX Parser with full context</div>
+        <div class="step-detail">Call <code>mxParserRegistry.getParser("setr.004.001.04")</code> with the extracted Document bytes. Pass SaaHeaderContext as part of RawMessage metadata — available to all downstream stages via MessageContext.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:12px;font-family:'Courier New',monospace;font-size:10px;background:#1e293b;color:#e2e8f0;padding:12px;border-radius:8px;line-height:1.8">
+    <span style="color:#86efac">public class</span> SaaEnvelopeParser {<br>
+    &nbsp;&nbsp;<span style="color:#7dd3fc">SaaParseResult</span> parse(<span style="color:#7dd3fc">RawMessage</span> raw) {<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#94a3b8">// 1. Strip SIBESHeader if present</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#7dd3fc">byte[]</span> xmlBytes = sibesHeaderStripper.strip(raw.payload());<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#94a3b8">// 2. Parse SAA envelope</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#7dd3fc">SaaHeaderContext</span> saaCtx = saaHeaderExtractor.extract(xmlBytes);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#94a3b8">// 3. Extract Saa:Body Document bytes</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#7dd3fc">byte[]</span> docBytes = saaBodyExtractor.extractDocument(xmlBytes);<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#86efac">return new</span> SaaParseResult(saaCtx, docBytes);<br>
+    &nbsp;&nbsp;}<br>
+    }<br><br>
+    <span style="color:#86efac">public record</span> SaaHeaderContext(<br>
+    &nbsp;&nbsp;<span style="color:#7dd3fc">String</span> senderDN, senderBIC, receiverDN, receiverBIC,<br>
+    &nbsp;&nbsp;<span style="color:#7dd3fc">String</span> messageIdentifier, routingCode, snfQueueName,<br>
+    &nbsp;&nbsp;<span style="color:#7dd3fc">boolean</span> isPossibleDuplicate,<br>
+    &nbsp;&nbsp;<span style="color:#7dd3fc">String</span> sessionNr, seqNr, swiftRef<br>
+    ) {}
+  </div>
+</div>
+
+<!-- ══════════ TAB 4: DB TABLES ══════════ -->
+<div id="db" class="view">
+  <div style="font-size:13px;font-weight:700;margin-bottom:4px">Database Tables Required for This Flow</div>
+  <div style="font-size:10.5px;color:#475569;margin-bottom:12px">Tables needed to support branch/client/SO resolution and template lookup as described in your flow notes.</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+    <div style="border:1.5px solid #e2e8f0;border-radius:8px;overflow:hidden">
+      <div style="background:#166534;color:#fff;padding:7px 10px;font-size:10.5px;font-weight:700">FDI_BRANCH</div>
+      <div style="padding:8px 10px;background:#f8fafc;font-family:'Courier New',monospace;font-size:9.5px;line-height:1.8">
+        branch_id        <span style="color:#6366f1">VARCHAR PK</span><br>
+        branch_name      VARCHAR<br>
+        receiver_dn      <span style="color:#dc2626">VARCHAR (SAA DN)</span> ← lookup key<br>
+        receiver_bic     <span style="color:#dc2626">VARCHAR (X1 BIC)</span> ← alt key<br>
+        snf_queue_name   VARCHAR<br>
+        routing_code     VARCHAR (FDI06)<br>
+        default_so_id    <span style="color:#dc2626">FK → FDI_SO_CONFIG</span> ← fallback SO<br>
+        active           BOOLEAN<br>
+        env              VARCHAR (live/test)
+      </div>
+    </div>
+
+    <div style="border:1.5px solid #e2e8f0;border-radius:8px;overflow:hidden">
+      <div style="background:#1e40af;color:#fff;padding:7px 10px;font-size:10.5px;font-weight:700">FDI_CLIENT</div>
+      <div style="padding:8px 10px;background:#f8fafc;font-family:'Courier New',monospace;font-size:9.5px;line-height:1.8">
+        client_id        <span style="color:#6366f1">VARCHAR PK</span><br>
+        client_name      VARCHAR<br>
+        sender_dn        <span style="color:#dc2626">VARCHAR (SAA DN)</span> ← lookup key<br>
+        sender_bic       <span style="color:#dc2626">VARCHAR (X1 BIC)</span> ← alt key<br>
+        branch_id        FK → FDI_BRANCH<br>
+        msg_types        VARCHAR[] (REDM,SUBS,SWITCH)<br>
+        active           BOOLEAN
+      </div>
+    </div>
+
+    <div style="border:1.5px solid #e2e8f0;border-radius:8px;overflow:hidden">
+      <div style="background:#7e22ce;color:#fff;padding:7px 10px;font-size:10.5px;font-weight:700">FDI_SO_CONFIG (Sub-Order / Destination)</div>
+      <div style="padding:8px 10px;background:#f8fafc;font-family:'Courier New',monospace;font-size:9.5px;line-height:1.8">
+        so_id            <span style="color:#6366f1">VARCHAR PK</span><br>
+        so_name          VARCHAR<br>
+        client_id        FK → FDI_CLIENT<br>
+        branch_id        FK → FDI_BRANCH<br>
+        acct_id          <span style="color:#dc2626">VARCHAR</span> ← SO lookup key 1<br>
+        isin             <span style="color:#dc2626">VARCHAR</span> ← SO lookup key 2<br>
+        order_types      VARCHAR[] (REDM,SUBS,SWITCH)<br>
+        dest_type        VARCHAR (MX/MT/FLAT)<br>
+        template_id      FK → FDI_TEMPLATE<br>
+        active           BOOLEAN
+      </div>
+    </div>
+
+    <div style="border:1.5px solid #e2e8f0;border-radius:8px;overflow:hidden">
+      <div style="background:#0f766e;color:#fff;padding:7px 10px;font-size:10.5px;font-weight:700">FDI_TEMPLATE</div>
+      <div style="padding:8px 10px;background:#f8fafc;font-family:'Courier New',monospace;font-size:9.5px;line-height:1.8">
+        template_id      <span style="color:#6366f1">VARCHAR PK</span><br>
+        template_name    VARCHAR<br>
+        src_msg_type     VARCHAR (setr.004.001.04)<br>
+        src_format       VARCHAR (MX)<br>
+        tgt_msg_type     VARCHAR (setr.004/MT502/CSV)<br>
+        tgt_format       VARCHAR (MX/MT/FLAT)<br>
+        mapping_file_id  FK → MAPPING_DEF<br>
+        so_id            FK → FDI_SO_CONFIG<br>
+        version          VARCHAR (SR2025)<br>
+        active           BOOLEAN
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:10px;padding:9px 11px;background:#fefce8;border:1.5px solid #fde047;border-radius:8px;font-size:10.5px;line-height:1.6">
+    <strong>SO Resolution Query (cascaded):</strong><br>
+    <code style="font-size:9.5px">
+    -- Level 1: AcctId<br>
+    SELECT so_id FROM FDI_SO_CONFIG WHERE acct_id='1150049111J' AND client_id=? AND branch_id=? AND active=1<br>
+    -- Level 2: ISIN (if Level 1 returns 0 rows)<br>
+    SELECT so_id FROM FDI_SO_CONFIG WHERE isin='DE000A0MS726' AND client_id=? AND branch_id=? AND active=1<br>
+    -- Level 3: Default from branch (if Level 2 returns 0 rows)<br>
+    SELECT default_so_id FROM FDI_BRANCH WHERE branch_id=?
+    </code>
+  </div>
+</div>
+
+</div>
+<script>
+function show(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

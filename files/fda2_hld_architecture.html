@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: transparent; font-size: 12px; color: #1e293b; }
+.page { padding: 16px; max-width: 1080px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; }
+.tab { padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1.5px solid transparent; transition: all .15s; }
+.tab.active { background: #1e40af; color: #fff; border-color: #1e40af; }
+.tab:not(.active) { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+.tab:hover:not(.active) { background: #e2e8f0; }
+
+.view { display: none; }
+.view.active { display: block; }
+
+/* ─── OVERVIEW ─── */
+.arch { display: flex; flex-direction: column; gap: 8px; }
+.layer { border-radius: 10px; padding: 10px 12px; }
+.layer-title { font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 7px; opacity: .6; }
+.row { display: flex; gap: 7px; flex-wrap: wrap; }
+.box { border-radius: 7px; padding: 7px 9px; font-size: 10.5px; font-weight: 600; flex: 1; min-width: 90px; line-height: 1.3; }
+.box .s { font-size: 9.5px; font-weight: 400; opacity: .75; margin-top: 2px; }
+.pill { display: inline-block; font-size: 8.5px; font-weight: 700; padding: 1px 5px; border-radius: 8px; margin-top: 3px; }
+
+/* Layer colour tokens */
+.L-ext   { background:#f8fafc; border:1.5px solid #cbd5e1; }
+.L-ingest{ background:#eff6ff; border:1.5px solid #93c5fd; }
+.L-adapt { background:#f0fdf4; border:1.5px solid #86efac; }
+.L-orch  { background:#fefce8; border:1.5px solid #fde047; }
+.L-parse { background:#fdf4ff; border:1.5px solid #d8b4fe; }
+.L-enrich{ background:#fff7ed; border:1.5px solid #fdba74; }
+.L-xform { background:#f0f9ff; border:1.5px solid #7dd3fc; }
+.L-route { background:#f0fdf4; border:1.5px solid #4ade80; }
+.L-del   { background:#f8fafc; border:1.5px solid #94a3b8; }
+.L-data  { background:#fff1f2; border:1.5px solid #fca5a5; }
+.L-ai    { background:#fdf2f8; border:1.5px solid #f0abfc; }
+.L-err   { background:#fef2f2; border:1.5px solid #f87171; }
+
+.C-ext   { background:#f1f5f9; border:1.5px solid #94a3b8; color:#475569; }
+.C-ingest{ background:#dbeafe; border:1.5px solid #60a5fa; color:#1e40af; }
+.C-adapt { background:#dcfce7; border:1.5px solid #4ade80; color:#166534; }
+.C-orch  { background:#fef9c3; border:1.5px solid #facc15; color:#713f12; }
+.C-parse { background:#f3e8ff; border:1.5px solid #c084fc; color:#6b21a8; }
+.C-enrich{ background:#ffedd5; border:1.5px solid #fb923c; color:#7c2d12; }
+.C-xform { background:#e0f2fe; border:1.5px solid #38bdf8; color:#0c4a6e; }
+.C-route { background:#dcfce7; border:1.5px solid #22c55e; color:#14532d; }
+.C-del   { background:#f1f5f9; border:1.5px solid #64748b; color:#334155; }
+.C-data  { background:#fee2e2; border:1.5px solid #ef4444; color:#7f1d1d; }
+.C-ai    { background:#fae8ff; border:1.5px solid #e879f9; color:#701a75; }
+.C-err   { background:#fef2f2; border:1.5px solid #f87171; color:#991b1b; }
+
+.P-cfg  { background:#dcfce7; color:#166534; }
+.P-plg  { background:#dbeafe; color:#1e40af; }
+.P-rul  { background:#fef9c3; color:#854d0e; }
+.P-ai   { background:#fae8ff; color:#7e22ce; }
+.P-own  { background:#fee2e2; color:#991b1b; }
+
+.arrow { text-align:center; color:#94a3b8; font-size:14px; line-height:1; margin:-2px 0; }
+
+/* side-by-side */
+.flex-row { display:flex; gap:8px; align-items:flex-start; }
+.flex-row .main { flex:1; }
+.sidebar { display:flex; flex-direction:column; gap:7px; min-width:130px; max-width:145px; }
+
+/* ─── SWIFT PARSER ─── */
+.parser-wrap { display: flex; gap: 12px; flex-wrap: wrap; }
+.parser-card { flex: 1; min-width: 260px; border: 1.5px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.parser-header { padding: 8px 12px; font-size: 11px; font-weight: 700; }
+.parser-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: #f8fafc; }
+.step { border-radius: 6px; padding: 6px 9px; font-size: 10.5px; }
+.step .n { font-weight: 700; margin-right: 4px; }
+.step .d { font-size: 9.5px; opacity: .75; margin-top: 1px; }
+.connector { text-align:center; font-size:11px; color:#94a3b8; }
+
+/* ─── CONFIG MODEL ─── */
+.config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.config-card { border: 1.5px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+.config-head { padding: 6px 10px; font-size: 10px; font-weight: 700; background: #1e40af; color: #fff; }
+.config-body { padding: 8px 10px; background: #f8fafc; }
+.field { font-size: 10px; color: #1e293b; margin-bottom: 3px; font-family: 'Courier New', monospace; }
+.field .t { color: #6366f1; font-style: italic; }
+
+/* ─── ERROR FLOW ─── */
+.ef-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; align-items:center; }
+.ef-box { border-radius:7px; padding:7px 10px; font-size:10.5px; font-weight:600; }
+.ef-arrow { color:#94a3b8; font-size:14px; align-self:center; }
+
+/* Legend */
+.legend { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; padding-top:10px; border-top:1px solid #e2e8f0; }
+.li { display:flex; align-items:center; gap:4px; font-size:9.5px; color:#64748b; }
+.ld { width:10px; height:10px; border-radius:2px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="tabs">
+  <div class="tab active" onclick="show('overview')">System Overview</div>
+  <div class="tab" onclick="show('parser')">Custom SWIFT Parser</div>
+  <div class="tab" onclick="show('config')">Config &amp; Extensibility</div>
+  <div class="tab" onclick="show('error')">Error Handling</div>
+</div>
+
+<!-- ══════════════ TAB 1: OVERVIEW ══════════════ -->
+<div id="overview" class="view active">
+<div class="arch">
+
+  <div class="layer L-ext">
+    <div class="layer-title">External Systems</div>
+    <div class="row">
+      <div class="box C-ext">Client Banks<div class="s">Vostro · Nostro · Correspondent</div></div>
+      <div class="box C-ext">SWIFT Network<div class="s">SWIFTNet / SAA / Alliance Lite2</div></div>
+      <div class="box C-ext">Internal CBS<div class="s">Core Banking / Back Office</div></div>
+      <div class="box C-ext">Third-party Systems<div class="s">Reuters / Bloomberg / FX</div></div>
+    </div>
+  </div>
+
+  <div class="arrow">▼</div>
+
+  <div class="layer L-ingest">
+    <div class="layer-title">Ingestion Layer — Transport-agnostic plug-in adapters</div>
+    <div class="row">
+      <div class="box C-ingest">MQ Listener<div class="s">IBM MQ / ActiveMQ / RabbitMQ</div><span class="pill P-plg">plugin</span></div>
+      <div class="box C-ingest">File Reception<div class="s">SFTP · FTP · S3 · NFS</div><span class="pill P-plg">plugin</span></div>
+      <div class="box C-ingest">CFT / C:D Listener<div class="s">Connect:Direct</div><span class="pill P-plg">plugin</span></div>
+      <div class="box C-ingest">REST Gateway<div class="s">HTTP / Webhook / gRPC</div><span class="pill P-plg">plugin</span></div>
+    </div>
+  </div>
+
+  <div class="arrow">▼</div>
+
+  <div class="layer L-adapt">
+    <div class="layer-title">Adapter Layer — Format detection ➜ Custom SWIFT Parser ➜ Canonical Model</div>
+    <div class="flex-row">
+      <div class="main">
+        <div class="row">
+          <div class="box C-adapt">Format Detector<div class="s">Auto-detect MT / MX / Flat / FIX by header signature</div></div>
+          <div class="box C-adapt" style="border-color:#dc2626;border-width:2px">Custom MT Parser ★<div class="s">Block {1}–{5} · Field tags · Seq · SubFields</div><span class="pill P-own">built in-house</span></div>
+          <div class="box C-adapt" style="border-color:#dc2626;border-width:2px">Custom MX Parser ★<div class="s">ISO 20022 XML · pacs · camt · pain · acmt</div><span class="pill P-own">built in-house</span></div>
+          <div class="box C-adapt">Flat File Parser<div class="s">CSV · Fixed-width · Custom delimiter config</div><span class="pill P-cfg">config</span></div>
+        </div>
+      </div>
+      <div class="sidebar">
+        <div class="box C-adapt">Parser Registry<div class="s">Scans @SwiftParser beans at startup</div><span class="pill P-plg">plugin</span></div>
+        <div class="box C-adapt">Canonical Model<div class="s">Internal contract between all stages</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">▼</div>
+
+  <div class="layer L-orch">
+    <div class="layer-title">Orchestration Service — Dynamic pipeline builder (zero-code for new clients)</div>
+    <div class="row">
+      <div class="box C-orch" style="flex:2">Pipeline Orchestrator<div class="s">Reads PipelineDefinition from DB by (clientId, branch, msgType). Builds step-chain at runtime. Carries MessageContext (traceId · correlationId · clientId · msgType) across all steps.</div><span class="pill P-cfg">config-driven</span></div>
+      <div class="box C-orch">Context Envelope<div class="s">clientId · branch · msgType · subOrderType · traceId · correlationId</div></div>
+      <div class="box C-orch">Saga / State Machine<div class="s">Retry · compensate · timeout per step</div></div>
+    </div>
+  </div>
+
+  <div class="arrow">▼</div>
+
+  <div class="flex-row">
+    <div class="main">
+      <div class="layer L-parse" style="height:100%">
+        <div class="layer-title">Parse &amp; Validation Engine — Structural + Business Rules</div>
+        <div class="row">
+          <div class="box C-parse">Structural Validator<div class="s">XSD · SWIFT field rules · tag mandatory/optional · length · format codes</div><span class="pill P-rul">rules</span></div>
+          <div class="box C-parse">Business Rule Engine<div class="s">Drools — rule sets scoped to (clientId, branch, msgType). Sub-order rules · amount limits · currency · SLA</div><span class="pill P-rul">Drools</span></div>
+          <div class="box C-parse">Sequence Validator<div class="s">MT seq A/B/C · MX repeating groups · cardinality</div></div>
+          <div class="box C-parse">Cross-field Validator<div class="s">Conditional rules · mutually exclusive tags · value dependencies</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar">
+      <div class="box C-ai">MT Field Lib<div class="s">Tag definitions · codes · format validators (built in-house)</div><span class="pill P-own">in-house</span></div>
+      <div class="box C-ai">MX Schema Lib<div class="s">ISO 20022 XSDs · code sets · enum validators</div><span class="pill P-own">in-house</span></div>
+      <div class="box C-ai">AI Rule Engine<div class="s">Anomaly detect · rule suggestion · fraud signal</div><span class="pill P-ai">optional AI</span></div>
+    </div>
+  </div>
+
+  <div class="arrow">▼</div>
+
+  <div class="layer L-enrich">
+    <div class="layer-title">Enrichment Service</div>
+    <div class="row">
+      <div class="box C-enrich">BIC / LEI Lookup<div class="s">SWIFT BIC directory · GL routing</div></div>
+      <div class="box C-enrich">Client Config Lookup<div class="s">Sub-order config · limits · SLA · field defaults per client</div><span class="pill P-cfg">config</span></div>
+      <div class="box C-enrich">Sanctions / AML Screen<div class="s">OFAC · UN · EU · local lists</div></div>
+      <div class="box C-enrich">Dedup / Idempotency<div class="s">Redis key: hash(clientId+ref+amount+date)</div></div>
+    </div>
+  </div>
+
+  <div class="arrow">▼</div>
+
+  <div class="layer L-xform">
+    <div class="layer-title">Transformation Engine — YAML/XSLT mapping, no code change for new mappings</div>
+    <div class="row">
+      <div class="box C-xform" style="flex:2">Format Transformer<div class="s">MT→MX · MX→MT · MT→MT · MX→MX · any→Pivot · Pivot→any. Mapping files (YAML/XSLT) stored in DB, hot-reloaded.</div><span class="pill P-cfg">YAML / XSLT</span></div>
+      <div class="box C-xform">SWIFT Version Handler<div class="s">SR2023→SR2025 field promotions. Version config, not code.</div><span class="pill P-cfg">config</span></div>
+      <div class="box C-xform">Pivot Model<div class="s">Intermediate neutral format for multi-hop transforms</div></div>
+    </div>
+  </div>
+
+  <div class="arrow">▼</div>
+
+  <div class="layer L-route">
+    <div class="layer-title">Routing Engine</div>
+    <div class="row">
+      <div class="box C-route" style="flex:2">Rule-based Route Resolver<div class="s">Drools rules on (clientId, msgType, currency, amount, branch) → target queue / endpoint / file path</div><span class="pill P-rul">Drools</span></div>
+      <div class="box C-route">Dead Letter Router<div class="s">Unroutable → DLQ + alert + audit</div></div>
+    </div>
+  </div>
+
+  <div class="arrow">▼</div>
+
+  <div class="layer L-del">
+    <div class="layer-title">Delivery Service — Outbox pattern for guaranteed delivery</div>
+    <div class="row">
+      <div class="box C-del">MQ / JMS<div class="s">IBM MQ · ActiveMQ</div><span class="pill P-plg">plugin</span></div>
+      <div class="box C-del">File Output<div class="s">SFTP · S3 · FTP</div><span class="pill P-plg">plugin</span></div>
+      <div class="box C-del">REST / API<div class="s">Webhook · HTTP push</div><span class="pill P-plg">plugin</span></div>
+      <div class="box C-del">Outbox Journal<div class="s">Write-then-dispatch, replay on failure</div></div>
+    </div>
+  </div>
+
+  <div class="arrow">▼</div>
+
+  <div class="layer L-data">
+    <div class="layer-title">Data Layer</div>
+    <div class="row">
+      <div class="box C-data">Config Store<div class="s">Oracle / Sybase — client · branch · pipeline · rule config</div></div>
+      <div class="box C-data">Audit Journal<div class="s">Full lifecycle trace per message with step timings</div></div>
+      <div class="box C-data">Rule Repository<div class="s">Drools DRL files · hot-reload without restart</div></div>
+      <div class="box C-data">Mapping Store<div class="s">YAML / XSLT transform maps — versioned in DB</div></div>
+      <div class="box C-data">DLQ Store<div class="s">Poison messages + error envelopes for reprocessing</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="legend">
+  <div class="li"><div class="ld" style="background:#86efac"></div>Plugin – no recompile needed</div>
+  <div class="li"><div class="ld" style="background:#fde047"></div>Config-driven – DB / YAML</div>
+  <div class="li"><div class="ld" style="background:#d8b4fe"></div>Rule-engine scoped</div>
+  <div class="li"><div class="ld" style="background:#f0abfc"></div>AI-augmented (optional)</div>
+  <div class="li"><div class="ld" style="background:#fca5a5;border:2px solid #dc2626"></div>Built in-house (★)</div>
+</div>
+</div>
+
+<!-- ══════════════ TAB 2: CUSTOM SWIFT PARSER ══════════════ -->
+<div id="parser" class="view">
+  <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:#1e293b">Custom SWIFT Parser Design — Built In-House</div>
+  <div style="font-size:10.5px;color:#475569;margin-bottom:14px;line-height:1.6">
+    A two-parser library: <strong>MT Parser</strong> (block-based text) and <strong>MX Parser</strong> (ISO 20022 XML). Both produce a unified <code>ParsedMessage</code> object handed to the Canonical Model builder. Versioned, pluggable, and testable independently.
+  </div>
+  <div class="parser-wrap">
+
+    <!-- MT Parser -->
+    <div class="parser-card">
+      <div class="parser-header" style="background:#166534;color:#fff">MT Parser — SWIFT Block Structure</div>
+      <div class="parser-body">
+        <div class="step C-adapt">
+          <span class="n">1.</span>Raw message ingested as byte stream
+          <div class="d">Encoding detection (UTF-8 / EBCDIC). Strip BOM. Normalise line endings.</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-adapt">
+          <span class="n">2.</span>Block Tokenizer
+          <div class="d">Split on {1:} {2:} {3:} {4:} {5:} delimiters. Validate block presence / order per message type. Handle {2:I} (input) vs {2:O} (output).</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-adapt">
+          <span class="n">3.</span>Header Parser (Block 1 &amp; 2)
+          <div class="d">Extract: LT address · session · seq · message type · priority · direction. MsgType registry lookup → loads field definition for that MT.</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-adapt">
+          <span class="n">4.</span>User Header Parser (Block 3)
+          <div class="d">Parse tag 103 (service id) · 113 (banking priority) · 108 (MUR) · 119 (validation flag: STP/REMIT/COV). Key–value map.</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-adapt">
+          <span class="n">5.</span>Body Field Tag Parser (Block 4)
+          <div class="d">Line-by-line scan. Tag pattern: :&lt;2-3 char tag&gt;[letter]:&lt;value&gt;. Sequence detection (A/B/C/D). Repeated tag handling (e.g. :57A: multiple). SubField split per tag definition.</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-adapt">
+          <span class="n">6.</span>SubField &amp; Format Validator
+          <div class="d">Per-tag: length · format codes (n/a/x/c/d/e) · SWIFT character set · conditional presence rules. Errors collected (don't fail-fast).</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-adapt">
+          <span class="n">7.</span>Trailer Parser (Block 5)
+          <div class="d">MAC · CHK · PDE · DLM · MRF tags. Checksum verification if present.</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-adapt">
+          <span class="n">8.</span>ParsedMTMessage → CanonicalBuilder
+          <div class="d">Typed model: blocks + field map + seq map + error list. Handed to Canonical Model builder.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MX Parser -->
+    <div class="parser-card">
+      <div class="parser-header" style="background:#1e40af;color:#fff">MX Parser — ISO 20022 XML</div>
+      <div class="parser-body">
+        <div class="step C-ingest">
+          <span class="n">1.</span>Raw XML ingested
+          <div class="d">Streaming SAX or StAX reader for large messages. Validate well-formedness. Extract AppHdr (head.001) if present.</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-ingest">
+          <span class="n">2.</span>Namespace &amp; Message Type Detection
+          <div class="d">Extract namespace URI → map to message identifier (e.g. pacs.008.001.10). Version extraction. Route to correct XSD.</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-ingest">
+          <span class="n">3.</span>XSD Structural Validation
+          <div class="d">Validate against versioned XSD from Schema Registry. Collect all violations (not fail-fast). Schema registry supports hot-add of new versions.</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-ingest">
+          <span class="n">4.</span>JAXB / Custom Unmarshalling
+          <div class="d">Unmarshal to versioned POJO tree. Code-generated from XSD via xjc OR custom reflection-based for flexibility. Supports pacs · camt · pain · acmt · colr.</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-ingest">
+          <span class="n">5.</span>Business Element Extraction
+          <div class="d">Navigate DOM for key fields: Cdtr · Dbtr · IntrBkSttlmAmt · EndToEndId · TxId · SttlmDt. Sub-order field extraction (SvcLvl · CtgyPurp · Purp).</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-ingest">
+          <span class="n">6.</span>Code Set Validation
+          <div class="d">ISO currency codes · country codes · BIC format · IBAN check digit · purpose codes · charge bearer codes from embedded code registries.</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-ingest">
+          <span class="n">7.</span>Repeating Group Handler
+          <div class="d">CreditTransferTransactionInformation[n] · RemittanceInformation. Cardinality check. Index each transaction for per-txn processing.</div>
+        </div>
+        <div class="connector">↓</div>
+        <div class="step C-ingest">
+          <span class="n">8.</span>ParsedMXMessage → CanonicalBuilder
+          <div class="d">Typed model: AppHdr + Document + txList + error list. Handed to Canonical Model builder.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:14px;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 12px;background:#f8fafc">
+    <div style="font-size:11px;font-weight:700;color:#1e293b;margin-bottom:8px">Parser Plugin Contract — MessageParser Interface</div>
+    <div style="font-family:'Courier New',monospace;font-size:10px;color:#1e293b;line-height:1.8;background:#1e293b;color:#e2e8f0;padding:10px;border-radius:6px">
+      <span style="color:#86efac">public interface</span> MessageParser {<br>
+      &nbsp;&nbsp;<span style="color:#7dd3fc">String</span> getSupportedFormat();   <span style="color:#94a3b8">// "MT103", "pacs.008", "FLAT_CSV"</span><br>
+      &nbsp;&nbsp;<span style="color:#7dd3fc">boolean</span> canParse(<span style="color:#7dd3fc">RawMessage</span> raw);<br>
+      &nbsp;&nbsp;<span style="color:#7dd3fc">ParsedMessage</span> parse(<span style="color:#7dd3fc">RawMessage</span> raw) <span style="color:#86efac">throws</span> ParseException;<br>
+      &nbsp;&nbsp;<span style="color:#7dd3fc">List&lt;String&gt;</span> getSupportedVersions();<br>
+      }<br><br>
+      <span style="color:#94a3b8">// Registration — zero code change for new parsers:</span><br>
+      <span style="color:#86efac">@SwiftParser</span>  <span style="color:#94a3b8">// custom annotation, auto-scanned at startup</span><br>
+      <span style="color:#86efac">public class</span> MT103Parser <span style="color:#86efac">implements</span> MessageParser { … }
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TAB 3: CONFIG MODEL ══════════════ -->
+<div id="config" class="view">
+  <div style="font-size:13px;font-weight:700;margin-bottom:4px">Extensibility Model — Zero Code Change Guarantee</div>
+  <div style="font-size:10.5px;color:#475569;margin-bottom:12px">New client, new message type, SWIFT upgrade → config/rule/mapping change only.</div>
+
+  <div class="config-grid">
+    <div class="config-card">
+      <div class="config-head">CLIENT CONFIG TABLE</div>
+      <div class="config-body">
+        <div class="field">clientId: <span class="t">VARCHAR</span> "BANK_AFB"</div>
+        <div class="field">branch: <span class="t">VARCHAR</span> "UAE_DUBAI"</div>
+        <div class="field">msgTypes: <span class="t">LIST</span> [MT103, pacs.008]</div>
+        <div class="field">subOrderEnabled: <span class="t">BOOL</span> true</div>
+        <div class="field">validationProfile: <span class="t">FK</span> → RULE_PROFILE</div>
+        <div class="field">transformMapping: <span class="t">FK</span> → MAPPING_CONFIG</div>
+        <div class="field">deliveryTarget: <span class="t">FK</span> → ENDPOINT_CONFIG</div>
+        <div class="field">slaSeconds: <span class="t">INT</span> 30</div>
+        <div class="field">active: <span class="t">BOOL</span> true</div>
+      </div>
+    </div>
+
+    <div class="config-card">
+      <div class="config-head">PIPELINE DEFINITION (YAML)</div>
+      <div class="config-body" style="font-family:'Courier New',monospace;font-size:9.5px;color:#1e293b;line-height:1.6">
+        clientId: BANK_AFB<br>
+        msgType: MT103<br>
+        steps:<br>
+        &nbsp;&nbsp;- STRUCTURAL_VALIDATE<br>
+        &nbsp;&nbsp;- BUSINESS_RULE_VALIDATE<br>
+        &nbsp;&nbsp;- ENRICH_BIC<br>
+        &nbsp;&nbsp;- ENRICH_CLIENT_CONFIG<br>
+        &nbsp;&nbsp;- SANCTIONS_SCREEN<br>
+        &nbsp;&nbsp;- TRANSFORM_MT_TO_MX<br>
+        &nbsp;&nbsp;- ROUTE<br>
+        &nbsp;&nbsp;- DELIVER<br>
+        errorStrategy: DLQ_WITH_ALERT<br>
+        retryCount: 3
+      </div>
+    </div>
+
+    <div class="config-card">
+      <div class="config-head">TRANSFORMATION MAPPING (YAML)</div>
+      <div class="config-body" style="font-family:'Courier New',monospace;font-size:9.5px;color:#1e293b;line-height:1.6">
+        from: MT103<br>
+        to: pacs.008.001.10<br>
+        version: SR2025<br>
+        fieldMappings:<br>
+        &nbsp;&nbsp;- src: block4.F32A.amount<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;tgt: CdtTrfTxInf.IntrBkSttlmAmt<br>
+        &nbsp;&nbsp;- src: block4.F50K.name<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;tgt: CdtTrfTxInf.Dbtr.Nm<br>
+        &nbsp;&nbsp;- src: block4.F59.account<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;tgt: CdtTrfTxInf.CdtrAcct.Id<br>
+        postProcessors: [IBAN_FORMAT, BIC_ENRICH]
+      </div>
+    </div>
+
+    <div class="config-card">
+      <div class="config-head">EXTENSIBILITY MATRIX</div>
+      <div class="config-body">
+        <table style="width:100%;font-size:10px;border-collapse:collapse">
+          <tr style="background:#f1f5f9"><td style="padding:3px 6px;font-weight:700">Change</td><td style="padding:3px 6px;font-weight:700">Action</td><td style="padding:3px 6px;font-weight:700">Code?</td></tr>
+          <tr><td style="padding:3px 6px">New client</td><td style="padding:3px 6px">Add DB row + YAML</td><td style="padding:3px 6px;color:#16a34a">❌ None</td></tr>
+          <tr style="background:#f8fafc"><td style="padding:3px 6px">New msg type</td><td style="padding:3px 6px">Parser plugin + mapping YAML</td><td style="padding:3px 6px;color:#d97706">Minimal</td></tr>
+          <tr><td style="padding:3px 6px">SWIFT SR upgrade</td><td style="padding:3px 6px">Parser version + mapping update</td><td style="padding:3px 6px;color:#16a34a">❌ None</td></tr>
+          <tr style="background:#f8fafc"><td style="padding:3px 6px">New validation rule</td><td style="padding:3px 6px">Add Drools DRL file</td><td style="padding:3px 6px;color:#16a34a">❌ None</td></tr>
+          <tr><td style="padding:3px 6px">New route rule</td><td style="padding:3px 6px">Add routing rule config</td><td style="padding:3px 6px;color:#16a34a">❌ None</td></tr>
+          <tr style="background:#f8fafc"><td style="padding:3px 6px">New transport</td><td style="padding:3px 6px">One Spring adapter bean</td><td style="padding:3px 6px;color:#d97706">1 class</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TAB 4: ERROR HANDLING ══════════════ -->
+<div id="error" class="view">
+  <div style="font-size:13px;font-weight:700;margin-bottom:4px">Error Handling &amp; Resilience Strategy</div>
+  <div style="font-size:10.5px;color:#475569;margin-bottom:12px">Every stage produces a sealed result. Failures never silently drop — always captured with full context.</div>
+
+  <div style="font-size:11px;font-weight:700;color:#1e293b;margin-bottom:8px">Processing Result Sealed Type</div>
+  <div style="font-family:'Courier New',monospace;font-size:10px;background:#1e293b;color:#e2e8f0;padding:10px;border-radius:6px;margin-bottom:12px;line-height:1.8">
+    <span style="color:#86efac">sealed interface</span> ProcessingResult&lt;T&gt; {<br>
+    &nbsp;&nbsp;<span style="color:#7dd3fc">record</span> Success&lt;T&gt;(T payload, MessageContext ctx) implements ProcessingResult&lt;T&gt; {}<br>
+    &nbsp;&nbsp;<span style="color:#7dd3fc">record</span> ValidationError(String errorCode, String field, String reason,<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RawMessage original, MessageContext ctx) implements ProcessingResult&lt;?&gt; {}<br>
+    &nbsp;&nbsp;<span style="color:#7dd3fc">record</span> SystemError(Throwable cause, String stage,<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RawMessage original, MessageContext ctx) implements ProcessingResult&lt;?&gt; {}<br>
+    }
+  </div>
+
+  <div style="font-size:11px;font-weight:700;color:#1e293b;margin-bottom:8px">Error Flow by Stage</div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+    <div class="ef-row">
+      <div class="ef-box C-parse" style="min-width:150px">Parse Failure</div>
+      <div class="ef-arrow">→</div>
+      <div class="ef-box C-err">Error Envelope<div class="s">errorCode · stage · fieldPath · rawPayload · clientId · timestamp</div></div>
+      <div class="ef-arrow">→</div>
+      <div class="ef-box C-data">DLQ + Audit Journal</div>
+      <div class="ef-arrow">→</div>
+      <div class="ef-box C-ai">AI Triage (optional)<div class="s">Classify · suggest fix</div></div>
+      <div class="ef-arrow">→</div>
+      <div class="ef-box C-ingest">Alert / Notify</div>
+    </div>
+    <div class="ef-row">
+      <div class="ef-box C-parse" style="min-width:150px">Business Rule Fail</div>
+      <div class="ef-arrow">→</div>
+      <div class="ef-box C-err">Collect ALL errors<div class="s">Non fail-fast — full error list per message</div></div>
+      <div class="ef-arrow">→</div>
+      <div class="ef-box C-orch">Orchestrator decides<div class="s">Reject / Repair / Hold / Route to exception queue</div></div>
+    </div>
+    <div class="ef-row">
+      <div class="ef-box C-del" style="min-width:150px">Delivery Failure</div>
+      <div class="ef-arrow">→</div>
+      <div class="ef-box C-orch">Retry (3×, backoff)</div>
+      <div class="ef-arrow">→</div>
+      <div class="ef-box C-err">Outbox replay on recovery</div>
+      <div class="ef-arrow">→</div>
+      <div class="ef-box C-data">DLQ + alert if retry exhausted</div>
+    </div>
+    <div class="ef-row">
+      <div class="ef-box C-route" style="min-width:150px">Routing Miss</div>
+      <div class="ef-arrow">→</div>
+      <div class="ef-box C-err">Unroutable envelope</div>
+      <div class="ef-arrow">→</div>
+      <div class="ef-box C-data">DLQ + manual review queue</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div style="border:1.5px solid #e2e8f0;border-radius:8px;padding:10px;background:#f8fafc">
+      <div style="font-size:11px;font-weight:700;color:#1e293b;margin-bottom:6px">Retry Strategy</div>
+      <div style="font-size:10px;color:#475569;line-height:1.6">
+        • Max 3 retries with exponential backoff<br>
+        • Idempotency key prevents double-processing<br>
+        • Per-step timeout defined in pipeline config<br>
+        • Saga compensating actions for partial failures<br>
+        • Circuit breaker on downstream endpoints
+      </div>
+    </div>
+    <div style="border:1.5px solid #e2e8f0;border-radius:8px;padding:10px;background:#f8fafc">
+      <div style="font-size:11px;font-weight:700;color:#1e293b;margin-bottom:6px">Observability</div>
+      <div style="font-size:10px;color:#475569;line-height:1.6">
+        • OpenTelemetry trace spans per pipeline step<br>
+        • correlationId propagated end-to-end<br>
+        • Structured logs: JSON with traceId + clientId<br>
+        • Metrics: throughput · latency · error rate per client<br>
+        • Full audit trail in journal table (immutable)
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+function show(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
